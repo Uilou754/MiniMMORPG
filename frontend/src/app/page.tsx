@@ -1,8 +1,11 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import Image from "next/image";
-import styles from "./page.module.css";
+import { useEffect, useRef } from "react";
+
+type Player = {
+  x: string;
+  y: string;
+};
 
 export default function Home() {
   // canvas要素を直接操作するための参照
@@ -11,7 +14,7 @@ export default function Home() {
   const wsRef = useRef<WebSocket | null>(null);
   // サーバーから受信したプレイヤー一覧
   // ※useStateではなく単純変数なのは、Canvas描画を自前ループでやっているため
-  let players: any[] = [];
+  let players: Player[] = [];
 
   useEffect(() => {
     // ==========================
