@@ -1,0 +1,18 @@
+{
+    // Editor settings
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    // ESLint settings
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": true
+    },
+    // Python settings
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true
+    },
+    // GitHub Copilot settings
+    "github.copilot.chat.localeOverride": "ja"
+}
