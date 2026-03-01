@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react";
-import { Player } from "../types/types"; 
+import { Player, Enemy } from "../types/types"; 
 
 export default function CanvasView() {
 
@@ -12,6 +12,8 @@ export default function CanvasView() {
 
     // サーバーから受信したプレイヤー一覧
     let players: Player[] = [];
+    // サーバーから受信した敵キャラクター一覧
+    let enemies: Enemy[] = [];
 
     useEffect(() => {
         // ==========================
@@ -29,6 +31,8 @@ export default function CanvasView() {
             if (data.type === "world_update") {
                 // プレイヤー一覧を更新
                 players = data.players;
+                // 敵キャラクター一覧を更新
+                enemies = data.enemies || [];
             }
         };
 
@@ -46,6 +50,7 @@ export default function CanvasView() {
         // 描画ループ（常時実行）
         // ==========================
         function loop() {
+
             // 前フレームをクリア
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -54,11 +59,35 @@ export default function CanvasView() {
                 ctx.fillStyle = "blue";
 
                 // Redisからは文字列で来るので数値に変換
-                ctx.fillRect(parseInt(p.x), parseInt(p.y), 20, 20);
+                const x = parseInt(p.x);
+                const y = parseInt(p.y);
+                ctx.fillRect(x, y, 20, 20);
+
+                // プレイヤーのRectのすぐ下にUUIDを表示
+                ctx.fillStyle = "black";
+                ctx.font = "10px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(p.id.substring(0, 8), x + 10, y + 30);
+            });
+
+            // サーバーから受信した敵キャラクターを描画
+            enemies.forEach(e => {
+                ctx.fillStyle = "red";
+
+                // 敵の座標
+                const x = parseInt(e.x);
+                const y = parseInt(e.y);
+                ctx.fillRect(x, y, 20, 20);
+
+                // 敵の名前を表示
+                ctx.fillStyle = "black";
+                ctx.font = "10px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(e.name, x + 10, y + 30);
             });
 
             // 次フレーム予約（約60FPS）
-            requestAnimationFrame(loop);
+            requestAnimationFrame(() => loop());
         }
 
         // 描画開始
@@ -73,14 +102,14 @@ export default function CanvasView() {
             if (e.key === "ArrowDown") y += 5;
             if (e.key === "ArrowLeft") x -= 5;
             if (e.key === "ArrowRight") x += 5;
-
+            
             // サーバーへ「移動したい」と通知
             // 実際の正しい座標はサーバー側（Redis）が保持する
             ws.send(
                 JSON.stringify({
                     type: "move",
-                    x,
-                    y,
+                    x: x,
+                    y: y,
                 })
             );
         });

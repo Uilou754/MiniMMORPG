@@ -22,10 +22,43 @@ r = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
 # ワールドに存在するプレイヤーID一覧を保存するSetキー
 WORLD_PLAYERS_KEY = "world:players"
 
+# ワールドに存在する敵ID一覧を保存するSetキー
+WORLD_ENEMIES_KEY = "world:enemies"
+
+# 敵の種類と個数定義
+ENEMY_TYPES = [
+    {"name": "ネズミ", "type": "mouse"},
+    {"name": "オオカミ", "type": "wolf"},
+    {"name": "クマ", "type": "bear"},
+]
+
 # 動作確認用エンドポイント
 @app.get("/")
 async def root():
     return {"message": "MMO server running"}
+
+# ===== アプリケーション起動時の初期化 =====
+@app.on_event("startup")
+async def startup_event():
+    """敵キャラクターをRedisに生成"""
+    # 既存の敵をクリア
+    await r.delete(WORLD_ENEMIES_KEY)
+    
+    # 各敵タイプごとに生成
+    for enemy_type in ENEMY_TYPES:
+        enemy_id = str(uuid.uuid4())
+        enemy_data = {
+            "id": enemy_id,
+            "name": enemy_type["name"],
+            "type": enemy_type["type"],
+            # ランダムな初期位置
+            "x": random.randint(50, 700),
+            "y": random.randint(50, 500),
+        }
+        # Redisに敵データを保存
+        await r.hset(f"enemy:{enemy_id}", mapping=enemy_data)
+        # 敵ID一覧に地加
+        await r.sadd(WORLD_ENEMIES_KEY, enemy_id)
 
 # WebSocket接続エンドポイント
 @app.websocket("/ws")
@@ -104,10 +137,22 @@ async def send_loop(ws):
             if p:
                 players.append(p)
 
-        # 全プレイヤー情報をクライアントへ送信
+        # 敵ID一覧を取得
+        enemy_ids = await r.smembers(WORLD_ENEMIES_KEY)
+        
+        enemies = []
+        
+        # 各敵のデータをRedisから取得
+        for eid in enemy_ids:
+            e = await r.hgetall(f"enemy:{eid}")
+            if e:
+                enemies.append(e)
+
+        # 全プレイヤー・敵情報をクライアントへ送信
         await ws.send_text(json.dumps({
             "type": "world_update",
-            "players": players
+            "players": players,
+            "enemies": enemies
         }))
 
         # 50ms待機（約20FPS更新）
