@@ -14,6 +14,8 @@ export default function CanvasView() {
     let players: Player[] = [];
     // サーバーから受信した敵キャラクター一覧
     let enemies: Enemy[] = [];
+    // 自分のセッションID
+    let mySessionId: string | null = null;
 
     useEffect(() => {
         // ==========================
@@ -27,8 +29,12 @@ export default function CanvasView() {
             // JSONをオブジェクトに変換
             const data = JSON.parse(event.data);
 
+            // 初期セッション情報の場合
+            if (data.type === "session_init") {
+                mySessionId = data.session_id;
+            }
             // ワールド更新メッセージの場合
-            if (data.type === "world_update") {
+            else if (data.type === "world_update") {
                 // プレイヤー一覧を更新
                 players = data.players;
                 // 敵キャラクター一覧を更新
@@ -41,10 +47,6 @@ export default function CanvasView() {
         // ==========================
         const canvas = canvasRef.current!;
         const ctx = canvas.getContext("2d")!;
-
-        // 自分の現在座標（クライアント側で保持）
-        let x = 100;
-        let y = 100;
 
         // ==========================
         // 描画ループ（常時実行）
@@ -63,6 +65,20 @@ export default function CanvasView() {
                 const y = parseInt(p.y);
                 ctx.fillRect(x, y, 20, 20);
 
+                // HPゲージを描画
+                const hp = parseInt(p.hp || "0");
+                const maxHp = parseInt(p.max_hp || "0");
+                const barWidth = 20;
+                const barHeight = 4;
+                const hpRatio = maxHp > 0 ? hp / maxHp : 0;
+                const greenWidth = barWidth * hpRatio;
+                // 残りHP（緑）
+                ctx.fillStyle = "green";
+                ctx.fillRect(x, y - barHeight - 2, greenWidth, barHeight);
+                // 減ったHP（赤）
+                ctx.fillStyle = "red";
+                ctx.fillRect(x + greenWidth, y - barHeight - 2, barWidth - greenWidth, barHeight);
+
                 // プレイヤーのRectのすぐ下にUUIDを表示
                 ctx.fillStyle = "black";
                 ctx.font = "10px Arial";
@@ -78,6 +94,18 @@ export default function CanvasView() {
                 const x = parseInt(e.x);
                 const y = parseInt(e.y);
                 ctx.fillRect(x, y, 20, 20);
+
+                // HPゲージを描画
+                const hp = parseInt(e.hp || "0");
+                const maxHp = parseInt(e.max_hp || "0");
+                const barWidth = 20;
+                const barHeight = 4;
+                const hpRatio = maxHp > 0 ? hp / maxHp : 0;
+                const greenWidth = barWidth * hpRatio;
+                ctx.fillStyle = "green";
+                ctx.fillRect(x, y - barHeight - 2, greenWidth, barHeight);
+                ctx.fillStyle = "red";
+                ctx.fillRect(x + greenWidth, y - barHeight - 2, barWidth - greenWidth, barHeight);
 
                 // 敵の名前を表示
                 ctx.fillStyle = "black";
@@ -97,7 +125,15 @@ export default function CanvasView() {
         // キー入力処理
         // ==========================
         window.addEventListener("keydown", (e) => {
-            // 矢印キーで座標変更（ローカル値）
+            // サーバーから受け取った自分のプレイヤー情報を検索
+            const myPlayer = players.find(p => p.id === mySessionId);
+            if (!myPlayer) return;
+
+            // サーバーから受け取った座標を数値に変換
+            let x = parseInt(myPlayer.x);
+            let y = parseInt(myPlayer.y);
+
+            // 矢印キーで座標変更
             if (e.key === "ArrowUp") y -= 5;
             if (e.key === "ArrowDown") y += 5;
             if (e.key === "ArrowLeft") x -= 5;

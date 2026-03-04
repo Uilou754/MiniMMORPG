@@ -54,6 +54,9 @@ async def startup_event():
             # ランダムな初期位置
             "x": random.randint(50, 700),
             "y": random.randint(50, 500),
+            # HP情報（とりあえず全種100）
+            "hp": 100,
+            "max_hp": 100,
         }
         # Redisに敵データを保存
         await r.hset(f"enemy:{enemy_id}", mapping=enemy_data)
@@ -86,6 +89,14 @@ async def websocket_endpoint(ws: WebSocket):
     await r.hset(player_key, mapping=player_data)
     # ワールド参加者Setに追加
     await r.sadd(WORLD_PLAYERS_KEY, session_id)
+
+    # クライアントに セッションID を送信
+    await ws.send_text(json.dumps({
+        "type": "session_init",
+        "session_id": session_id,
+        "x": str(player_data["x"]),
+        "y": str(player_data["y"]),
+    }))
 
     try:
         # 受信処理と送信処理を並列実行
