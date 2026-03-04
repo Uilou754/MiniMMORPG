@@ -122,25 +122,24 @@ export default function CanvasView() {
         loop();
     
         // ==========================
-        // キー入力処理
+        // キー入力処理（同時押し対応）
         // ==========================
-        window.addEventListener("keydown", (e) => {
-            // サーバーから受け取った自分のプレイヤー情報を検索
+        // 押下中のキーを保持するセット
+        const pressed: Record<string, boolean> = {};
+
+        // 位置送信関数
+        const sendMove = () => {
             const myPlayer = players.find(p => p.id === mySessionId);
             if (!myPlayer) return;
 
-            // サーバーから受け取った座標を数値に変換
             let x = parseInt(myPlayer.x);
             let y = parseInt(myPlayer.y);
 
-            // 矢印キーで座標変更
-            if (e.key === "ArrowUp") y -= 5;
-            if (e.key === "ArrowDown") y += 5;
-            if (e.key === "ArrowLeft") x -= 5;
-            if (e.key === "ArrowRight") x += 5;
-            
-            // サーバーへ「移動したい」と通知
-            // 実際の正しい座標はサーバー側（Redis）が保持する
+            if (pressed["ArrowUp"]) y -= 5;
+            if (pressed["ArrowDown"]) y += 5;
+            if (pressed["ArrowLeft"]) x -= 5;
+            if (pressed["ArrowRight"]) x += 5;
+
             ws.send(
                 JSON.stringify({
                     type: "move",
@@ -148,7 +147,25 @@ export default function CanvasView() {
                     y: y,
                 })
             );
-        });
+        };
+
+        const onKeyDown = (e: KeyboardEvent) => {
+            // 矢印キーのみを対象
+            if (e.key.startsWith("Arrow")) {
+                pressed[e.key] = true;
+                sendMove();
+            }
+        };
+
+        const onKeyUp = (e: KeyboardEvent) => {
+            if (e.key.startsWith("Arrow")) {
+                pressed[e.key] = false;
+                sendMove();
+            }
+        };
+
+        window.addEventListener("keydown", onKeyDown);
+        window.addEventListener("keyup", onKeyUp);
 
         // ==========================
         // クリーンアップ処理
